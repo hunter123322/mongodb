@@ -69,17 +69,20 @@ app.get('/db', async (req, res) => {
   try {
     const db = await connectDB()
 
-    await db.command({ ping: 1 })
+    const beaches = await db
+      .collection('beaches')
+      .find({})
+      .toArray()
 
     res.status(200).json({
       success: true,
-      message: 'MongoDB connected',
-      database: db.databaseName,
+      count: beaches.length,
+      data: beaches,
     })
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'MongoDB connection failed',
+      message: 'Failed to fetch beaches',
       error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
