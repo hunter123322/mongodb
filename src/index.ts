@@ -1,7 +1,7 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { MongoClient } from 'mongodb'
+import mongoose from 'mongoose'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -14,18 +14,26 @@ if (!uri) {
   throw new Error('MONGODB_URI is not defined')
 }
 
-const client = new MongoClient(uri)
-
 let isConnected = false
 
 async function connectDB() {
-  if (!isConnected) {
-    await client.connect()
-    isConnected = true
-  }
+  if (isConnected) return
 
-  return client.db('albay-data')
+  await mongoose.connect(uri)
+  isConnected = true
 }
+
+// Beaches Schema
+const beachSchema = new mongoose.Schema(
+  {},
+  {
+    collection: 'beaches',
+    strict: false,
+  }
+)
+
+const Beach =
+  mongoose.models.Beach || mongoose.model('Beach', beachSchema)
 
 // Home route - HTML
 app.get('/', (req, res) => {
@@ -64,15 +72,12 @@ app.get('/api-data', (req, res) => {
   })
 })
 
-// MongoDB check
+// Fetch all beaches
 app.get('/db', async (req, res) => {
   try {
-    const db = await connectDB()
+    await connectDB()
 
-    const beaches = await db
-      .collection('beaches')
-      .find({})
-      .toArray()
+    const beaches = await Beach.find({}).lean()
 
     res.status(200).json({
       success: true,
