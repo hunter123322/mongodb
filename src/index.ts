@@ -1,7 +1,7 @@
 import express from 'express'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import mongoose from 'mongoose'
+import mongoose, { Schema, Document, Model } from 'mongoose'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,58 +21,115 @@ async function connectDB() {
 
   await mongoose.connect(uri)
   isConnected = true
+
+  console.log('MongoDB connected')
 }
 
-// Beaches Schema
-const beachSchema = new mongoose.Schema(
-  {},
+interface BeachDocument extends Document {
+  slug: string
+  title: string
+  cover_image: string
+  description: string
+  category: string[]
+  municipality: string
+  geo_lat: number
+  geo_lng: number
+  activity_tags: string[]
+  contact_info: {
+    phone: string
+    email: string
+    website: string
+  }
+  social_links: {
+    facebook: string
+    instagram: string
+  }
+  pricing_lowest: number | null
+  operating_hours: string
+  rating: number | null
+  is_premium: boolean
+  view_count: number
+  fullURLMap?: string
+  fileSizeMB: number
+  pictureCredits?: string
+  creditsName?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+const BeachesSchema = new Schema<BeachDocument>(
   {
-    collection: 'beaches',
-    strict: false,
+    slug: { type: String, required: true, unique: true },
+    title: { type: String, required: true },
+    cover_image: { type: String, required: true },
+    description: { type: String, required: true },
+    category: { type: [String], required: true },
+    municipality: { type: String, required: true },
+
+    geo_lat: { type: Number, default: 13.243772 },
+    geo_lng: { type: Number, default: 123.672333 },
+
+    activity_tags: { type: [String], required: true },
+
+    contact_info: {
+      phone: { type: String, default: '+63 9000000000' },
+      email: { type: String, default: 'albaytourist@gmail.com' },
+      website: {
+        type: String,
+        default: 'https://www.albaytourist.com/beaches',
+      },
+    },
+
+    social_links: {
+      facebook: {
+        type: String,
+        default:
+          'https://www.facebook.com/profile.php?id=61585599752475',
+      },
+      instagram: {
+        type: String,
+        default:
+          'https://www.facebook.com/profile.php?id=61585599752475',
+      },
+    },
+
+    pricing_lowest: { type: Number, default: null },
+    operating_hours: { type: String, default: '8am-5pm' },
+    rating: { type: Number, default: null },
+    is_premium: { type: Boolean, default: false },
+    view_count: { type: Number, default: 0 },
+
+    fullURLMap: { type: String },
+    fileSizeMB: { type: Number, default: 0 },
+
+    pictureCredits: {
+      type: String,
+      trim: true,
+    },
+
+    creditsName: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
   }
 )
 
-const Beach =
-  mongoose.models.Beach || mongoose.model('Beach', beachSchema)
+const Beach: Model<BeachDocument> =
+  mongoose.models.Beach ||
+  mongoose.model<BeachDocument>(
+    'Beach',
+    BeachesSchema,
+    'beaches'
+  )
 
-// Home route - HTML
 app.get('/', (req, res) => {
-  res.type('html').send(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Express on Vercel</title>
-        <link rel="stylesheet" href="/style.css" />
-      </head>
-      <body>
-        <nav>
-          <a href="/">Home</a>
-          <a href="/about">About</a>
-          <a href="/api-data">API Data</a>
-          <a href="/healthz">Health</a>
-          <a href="/db">DB Check</a>
-        </nav>
-        <h1>Welcome to Express on Vercel 🚀</h1>
-        <p>This is a minimal example without a database or forms.</p>
-        <img src="/logo.png" alt="Logo" width="120" />
-      </body>
-    </html>
-  `)
+  res.send('Home')
 })
 
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'about.htm'))
-})
-
-app.get('/api-data', (req, res) => {
-  res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
-
-// Fetch all beaches
 app.get('/db', async (req, res) => {
   try {
     await connectDB()
@@ -88,12 +145,14 @@ app.get('/db', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch beaches',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Unknown error',
     })
   }
 })
 
-// Health check
 app.get('/healthz', (req, res) => {
   res.status(200).json({
     status: 'ok',
